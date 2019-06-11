@@ -10,6 +10,8 @@ class Individual(ABC):
       self.genes = n
     else:
       raise ValueError('The input parameter n, is not valid')
+    
+    self.fitness = float('-inf')
 
   @abstractmethod
   def mutation(self):
