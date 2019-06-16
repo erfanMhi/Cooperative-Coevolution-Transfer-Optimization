@@ -3,21 +3,41 @@ from scipy.stats import multivariate_normal
 from to.probabilistic_model import ProbabilisticModel
 
 class MixtureModel(object):
-    def __init__(self, allModels, alpha=None):
+    def __init__(self, allModels, alpha=False):
         self.model_list = allModels.copy()
         self.nModels = len(allModels)
-        if alpha==None:
+        if alpha is False:
             self.alpha = (1/self.nModels)*np.ones(self.nModels)
         else:
             self.alpha = alpha
+
         self.probTable = None
         self.nSol = None
+        self.__target_model_added = False
 
-    def createTable(self, solutions, CV, modelType, probs_RL=None):
-        if CV:
+    def add_target_solutions(self, solutions, modelType):
+        if not self.__target_model_added:
             self.nModels = self.nModels + 1
             self.model_list.append(ProbabilisticModel(modelType=modelType))
             self.model_list[-1].buildModel(solutions)
+            self.target_model_added = True
+        else:
+            raise Exception('Target model is already added.')
+
+    def add_target_model(self, target_model):
+        if not self.__target_model_added:
+            self.nModels = self.nModels + 1
+            self.model_list.append(target_model)
+            self.target_model_added = True
+        else:
+            raise Exception('Target model is already added.')
+
+    def createTable(self, solutions, CV, modelType, probs_RL=None):
+        if CV:
+            self.add_target_solutions(solutions, modelType)
+            # self.nModels = self.nModels + 1
+            # self.model_list.append(ProbabilisticModel(modelType=modelType))
+            # self.model_list[-1].buildModel(solutions)
             self.alpha = (1/self.nModels) * np.ones(self.nModels)
             nSol = solutions.shape[0]
             self.nSol = nSol
@@ -60,7 +80,7 @@ class MixtureModel(object):
             self.alpha = modif_alpha/total_alpha
 
     def sample(self, nSol, samplesRL=None):
-        print(self.alpha)
+        # print('sample: ', self.alpha)
         indSamples = np.ceil(nSol*self.alpha).astype(int)
         solutions = np.array([])
         for i in range(self.nModels):
