@@ -4,6 +4,7 @@ import lhsmdu
 import argparse
 import os
 
+from time import time
 from pprint import pprint
 from utils.data_manipulators import *
 from evolution.operators import *
@@ -270,6 +271,10 @@ def get_args():
                       type=bool, nargs='?',
                       help='Should we build source models?')
 
+  parser.add_argument('--src_version', default='v1',
+                      type=str, nargs='?',
+                      help='What version of source models should be used?')
+
   parser.add_argument('--s1_psize', default=50,
                       type=int, nargs='?',
                       help='Population size for the first species?')
@@ -304,31 +309,47 @@ def main(args=False):
   src_models = None
 
 
+  src_problems = []
   # Loading Problems Data
-  KP_sc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_sc_ak'))
-  KP_uc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_uc_ak'))
-  KP_wc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_wc_ak'))
-  KP_wc_rk = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_wc_rk'))
-  KP_sc_rk = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_sc_rk'))
-  KP_uc_rk = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_uc_rk'))
+  if args.src_version == 'v1':
+    KP_sc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_sc_ak'))
+    KP_uc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_uc_ak'))
+    KP_wc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_wc_ak'))
+    KP_wc_rk = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_wc_rk'))
+    KP_sc_rk = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_sc_rk'))
+    KP_uc_rk = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_uc_rk'))
+    src_problems = [KP_uc_rk, KP_sc_rk, KP_wc_rk, KP_sc_ak]
+  elif args.src_version == 'v2':
+    src_problem_set = [(40, 'KP_wc_ak'), (320, 'KP_wc_rk'), (320, 'KP_sc_rk'), (320, 'KP_uc_rk')] # Counter-Problem list
+    for problem_num, problem_name in src_problem_set:
+      for i in range(problem_num):
+        src_problems.append(Tools.load_from_file(os.path.join(knapsack_problem_path, '{}{}'.format(problem_name, i))))
 
+    KP_uc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_uc_rk'))
+    KP_sc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_sc_ak'))
+  else:
+    print('Source problems version is not correct {}'.format(args.src_version))
+
+  print("All source problems & target problems are loaded: length = {}".format(len(src_problems)))
   ################# Evolutionary Algorithm ###############
   src_models = []
 
 
   if args.buildmodel:
     # build source probabilistic models
-    
-    src_models, _, _ = evolutionary_algorithm(KP_uc_rk, 1000, src_models=src_models, stop_condition=args.stop_condition)
-    src_models, _, _ = evolutionary_algorithm(KP_sc_rk, 1000, src_models=src_models, stop_condition=args.stop_condition)
-    src_models, _, _ = evolutionary_algorithm(KP_wc_rk, 1000, src_models=src_models, stop_condition=args.stop_condition)
-    src_models, _, _ = evolutionary_algorithm(KP_sc_ak, 1000, src_models=src_models, stop_condition=args.stop_condition)
 
-    Tools.save_to_file(source_models_path, src_models)
-      
+    now = time()
+    for problem in src_problems:
+      src_models, _, _ = evolutionary_algorithm(problem, 1000, src_models=src_models, stop_condition=args.stop_condition)
+      # src_models, _, _ = evolutionary_algorithm(KP_sc_rk, 1000, src_models=src_models, stop_condition=args.stop_condition)
+      # src_models, _, _ = evolutionary_algorithm(KP_wc_rk, 1000, src_models=src_models, stop_condition=args.stop_condition)
+      # src_models, _, _ = evolutionary_algorithm(KP_sc_ak, 1000, src_models=src_models, stop_condition=args.stop_condition)
+
+    Tools.save_to_file(source_models_path + '_{}'.format(args.src_version), src_models)
+    print('Building models took {} minutes'.format(str((time()-now)/60)))
   else:
     try:
-      src_models = Tools.load_from_file(source_models_path)
+      src_models = Tools.load_from_file(source_models_path + '_{args.src_version}')
     except FileNotFoundError:
       print('Source models not exist in the {} path'.format(source_models_path))
 
