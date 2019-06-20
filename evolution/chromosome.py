@@ -1,12 +1,13 @@
 from evolution.individual import *
-
+from to.probabilistic_model import ProbabilisticModel
+from to.mixture_model import MixtureModel
 class Chromosome(Individual):
   def __init__(self, n, init_func=np.random.rand):
     super().__init__(n, init_func=init_func)
 
   def mutation(self, mprob):
-    if np.random.rand() < mprob:
-      self.genes = np.abs(1 - self.genes)
+    mask = np.random.rand(self.genes.shape[0]) < mprob
+    self.genes[mask] = np.abs(1 - self.genes[mask])
   
   def fitness_calc(self, problem): # You can implement this in a more optmized way using vectorizatioin but it will hurt modularity
     weights = problem['w']
@@ -41,3 +42,37 @@ class Chromosome(Individual):
 
     self.fitness = total_profit
     return self.fitness
+
+class AlphaChromosome(Individual):
+  def __init__(self, n, init_func=np.random.rand):
+      super().__init__(n, init_func=init_func)
+
+  def mutation(self, mprob, mtype='normal'):
+    mask = np.random.rand(self.genes.shape[0]) < mprob
+    if mtype=='normal':
+      self.genes[mask] = self.genes[mask] + np.random.normal(0, .25, size=self.genes[mask].shape)
+      self.genes[self.genes > 1] = 1
+      self.genes[self.genes < 0] = 0
+      if np.sum(self.genes) == 0:
+        self.genes[-1] = 1
+      # print('mutation: ', self.genes)
+    else:
+      self.genes[mask] = np.abs(1 - self.genes[mask])
+
+      
+  
+  def fitness_calc(self, problem, src_models, target_model, sample_size): # You can implement this in a more optmized way using vectorizatioin but it will hurt modularity
+    normalized_alpha = self.genes/np.sum(self.genes)
+    mixModel = MixtureModel(src_models, alpha=normalized_alpha)
+    mixModel.add_target_model(target_model)
+    # mixModel.createTable(Chromosome.genes_to_numpy(pop), True, 'umd')
+    # mixModel.EMstacking()
+    # mixModel.mutate()
+    offsprings = mixModel.sample(sample_size)
+    offsprings = np.array([Chromosome(offspring) for offspring in offsprings])
+    sfitness = np.zeros(sample_size)
+    for i in range(sample_size): 
+      sfitness[i] = offsprings[i].fitness_calc(problem)
+    self.fitness = np.mean(sfitness)
+    best_offspring = np.max(offsprings)
+    return self.fitness, best_offspring
