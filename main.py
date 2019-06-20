@@ -308,7 +308,7 @@ def main(args=False):
   knapsack_problem_path = 'problems/knapsack'
   src_models = None
 
-
+  target_problem = None
   src_problems = []
   # Loading Problems Data
   if args.src_version == 'v1':
@@ -319,6 +319,7 @@ def main(args=False):
     KP_sc_rk = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_sc_rk'))
     KP_uc_rk = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_uc_rk'))
     src_problems = [KP_uc_rk, KP_sc_rk, KP_wc_rk, KP_sc_ak]
+    target_problem = KP_sc_ak
   elif args.src_version == 'v2':
     src_problem_set = [(40, 'KP_wc_ak'), (320, 'KP_wc_rk'), (320, 'KP_sc_rk'), (320, 'KP_uc_rk')] # Counter-Problem list
     for problem_num, problem_name in src_problem_set:
@@ -327,6 +328,7 @@ def main(args=False):
 
     KP_uc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_uc_rk'))
     KP_sc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_sc_ak'))
+    target_problem = KP_sc_ak
   else:
     print('Source problems version is not correct {}'.format(args.src_version))
 
@@ -360,9 +362,9 @@ def main(args=False):
   trans['transfer'] = args.transfer
   trans['delta'] = args.delta
   if args.version == 'v1':
-    return transfer_cc_v1(KP_uc_ak, 1000, reps, trans, s1_psize=args.s1_psize, s2_psize=args.s2_psize, gen=100, sample_size=args.sample_size, src_models=src_models)
+    return transfer_cc_v1(target_problem, 1000, reps, trans, s1_psize=args.s1_psize, s2_psize=args.s2_psize, gen=100, sample_size=args.sample_size, src_models=src_models)
   elif args.version == 'to':
-    return transfer_ea(KP_uc_ak, 1000, reps, trans, src_models=src_models)
+    return transfer_ea(target_problem, 1000, reps, trans, src_models=src_models)
   elif args.version == 'ea':
     return evolutionary_algorithm(KP_uc_ak, 1000, src_models=src_models, stop_condition=args.stop_condition)
   else:
