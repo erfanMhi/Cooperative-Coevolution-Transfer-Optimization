@@ -1,4 +1,4 @@
-from time import time()
+from time import time
 from evolution.individual import *
 from to.probabilistic_model import ProbabilisticModel
 from to.mixture_model import MixtureModel
