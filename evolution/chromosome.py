@@ -61,7 +61,7 @@ class AlphaChromosome(Individual):
 
       
   
-  def fitness_calc(self, problem, src_models, target_model, sample_size): # You can implement this in a more optmized way using vectorizatioin but it will hurt modularity
+  def fitness_calc(self, problem, src_models, target_model, sample_size, sub_sample_size): # You can implement this in a more optmized way using vectorizatioin but it will hurt modularity
     normalized_alpha = self.genes/np.sum(self.genes)
     mixModel = MixtureModel(src_models, alpha=normalized_alpha)
     mixModel.add_target_model(target_model)
@@ -69,9 +69,11 @@ class AlphaChromosome(Individual):
     # mixModel.EMstacking()
     # mixModel.mutate()
     offsprings = mixModel.sample(sample_size)
+    idx = np.random.randint(sample_size, size=sub_sample_size)
+    offsprings = offsprings[idx] # Creating sub_samples of samples
     offsprings = np.array([Chromosome(offspring) for offspring in offsprings])
-    sfitness = np.zeros(sample_size)
-    for i in range(sample_size): 
+    sfitness = np.zeros(sub_sample_size)
+    for i in range(sub_sample_size): 
       sfitness[i] = offsprings[i].fitness_calc(problem)
     self.fitness = np.mean(sfitness)
     best_offspring = np.max(offsprings)
