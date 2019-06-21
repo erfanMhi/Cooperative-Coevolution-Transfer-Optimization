@@ -166,7 +166,10 @@ def transfer_ea(problem, dims, reps, trans, psize=50, gen=100, src_models=[]):
       # best_fitness_history.pop(0)
       # best_fitness_history.append(representatives[0].fitness.values[0])
 
-def transfer_cc_v1(problem, dims, reps, trans, s1_psize=50, s2_psize=20, gen=100, sample_size=50, src_models=[]):
+def transfer_cc_v1(problem, dims, reps, trans,
+                   s1_psize=50, s2_psize=20, gen=100,
+                   sample_size=50, sub_sample_size=50,
+                   src_models=[]):
   
   if trans['transfer'] and (not src_models):
     raise ValueError('No probabilistic models stored for transfer optimization.')
@@ -210,7 +213,8 @@ def transfer_cc_v1(problem, dims, reps, trans, s1_psize=50, s2_psize=20, gen=100
             best_chrom = Chromosome(dims)
             for i in range(s2_psize): 
               s2_cfitness[i], best_offspring = offsprings[i].fitness_calc(problem, src_models,
-                                                                          target_model, sample_size)
+                                                                          target_model, sample_size,
+                                                                          sub_sample_size)
               if best_chrom < best_offspring: # Saving best Chromosome for future injection
                 best_chrom = best_offspring
             if g/delta != 1:
@@ -285,17 +289,27 @@ def get_args():
 
   parser.add_argument('--sample_size', default=50,
                       type=int, nargs='?',
-                      help='Number of samples generated from each AlphaChromosome?')                      
+                      help='Number of samples generated from each AlphaChromosome?')
+
+  parser.add_argument('--sub_sample_size', default=50,
+                      type=int, nargs='?',
+                      help='How many samples should we take from sample_size number of samples generated?')               
   
   parser.add_argument('-v', dest='version', default='v1',
                     type=str, nargs='?',
                     help='What version should be executed?')
-                  
+  
+
   # parser.add_argument('-q', dest='matrix_num', default='a',
   #                     type=str, nargs='?',
   #                     help='T^0_H matrix selector for section b')
 
   return parser.parse_args()
+
+def check_args(args):
+  if args.sample_size < args.sub_sample_size:
+    raise ValueError('sub_sample_size has greater value than sample_size')
+
 
 def main(args=False):
 
@@ -303,6 +317,7 @@ def main(args=False):
   if args is False:
     args = get_args()
 
+  check_args(args)
   models_path = 'models'
   source_models_path = os.path.join(models_path, 'knapsack_source_models')
   knapsack_problem_path = 'problems/knapsack'
@@ -362,11 +377,14 @@ def main(args=False):
   trans['transfer'] = args.transfer
   trans['delta'] = args.delta
   if args.version == 'v1':
-    return transfer_cc_v1(target_problem, 1000, reps, trans, s1_psize=args.s1_psize, s2_psize=args.s2_psize, gen=100, sample_size=args.sample_size, src_models=src_models)
+    return transfer_cc_v1(target_problem, 1000, reps, trans, s1_psize=args.s1_psize,
+                           s2_psize=args.s2_psize, gen=100, sample_size=args.sample_size,
+                           sub_sample_size=args.sub_sample_size, src_models=src_models)
+                  
   elif args.version == 'to':
     return transfer_ea(target_problem, 1000, reps, trans, src_models=src_models)
   elif args.version == 'ea':
-    return evolutionary_algorithm(KP_uc_ak, 1000, src_models=src_models, stop_condition=args.stop_condition)
+    return evolutionary_algorithm(target_problem, 1000, src_models=src_models, stop_condition=args.stop_condition)
   else:
     raise ValueError('Version which you entered is not right')
 
