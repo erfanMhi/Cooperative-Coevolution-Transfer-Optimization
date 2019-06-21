@@ -170,7 +170,7 @@ def transfer_cc_v1(problem, dims, reps, trans,
                    s1_psize=50, s2_psize=20, gen=100,
                    sample_size=50, sub_sample_size=50,
                    src_models=[]):
-  
+  start = time()
   if trans['transfer'] and (not src_models):
     raise ValueError('No probabilistic models stored for transfer optimization.')
 
@@ -180,7 +180,7 @@ def transfer_cc_v1(problem, dims, reps, trans,
   
   fitness_hist_s1 = np.ndarray([reps, int((gen/delta * (delta-1)) + gen%delta) + 1, s1_psize], dtype=object)
   fitness_hist_s2 = np.ndarray([reps, int(gen/delta), s2_psize], dtype=object)
-  
+  time_hist_s1 = np.zeros([reps, int((gen/delta * (delta-1)) + gen%delta) + 1, s1_psize], dtype=object)
   dims_s2 = len(src_models)+1
 
   best_chrom = None # Best Chromosome to inject to the first species from second species
@@ -190,7 +190,9 @@ def transfer_cc_v1(problem, dims, reps, trans,
       print('------------------------- Repetition {} ---------------------------'.format(rep))
       first_species = get_pop_init(s1_psize, dims, init_func_s1) # For choosing decision params
       second_species = get_pop_init_s2(s2_psize, dims_s2) # For choosing alpha params
-      for i in range(s1_psize): first_species[i].fitness_calc(problem)
+      for i in range(s1_psize):
+        first_species[i].fitness_calc(problem)
+        time_hist_s1[rep, 0, i] = time()
 
       bestfitness = np.max(first_species).fitness
       fitness = Chromosome.fitness_to_numpy(first_species)
@@ -238,6 +240,7 @@ def transfer_cc_v1(problem, dims, reps, trans,
             cfitness = np.zeros(s1_psize)
             for j in range(s1_psize): 
               cfitness[j] = offsprings[j].fitness_calc(problem)
+              time_hist_s1[rep, int(np.ceil(g/delta*(delta-1))), i] = time()
 
             # Selection
             first_species, fitness = total_selection(np.concatenate((first_species, offsprings)),
@@ -247,7 +250,7 @@ def transfer_cc_v1(problem, dims, reps, trans,
             fitness_hist_s1[rep, int(np.ceil(g/delta*(delta-1))), :] = first_species
             print('Generation %d best fitness of first species= %f' % (g, bestfitness))
   print('Finished')
-  return fitness_hist_s1, fitness_hist_s2
+  return fitness_hist_s1, fitness_hist_s2, (time_hist_s1 - start)
       
       
 
