@@ -1,6 +1,8 @@
+from time import time()
 from evolution.individual import *
 from to.probabilistic_model import ProbabilisticModel
 from to.mixture_model import MixtureModel
+
 class Chromosome(Individual):
   def __init__(self, n, init_func=np.random.rand):
     super().__init__(n, init_func=init_func)
@@ -62,6 +64,7 @@ class AlphaChromosome(Individual):
       
   
   def fitness_calc(self, problem, src_models, target_model, sample_size, sub_sample_size): # You can implement this in a more optmized way using vectorizatioin but it will hurt modularity
+    start = time()
     normalized_alpha = self.genes/np.sum(self.genes)
     mixModel = MixtureModel(src_models, alpha=normalized_alpha)
     mixModel.add_target_model(target_model)
@@ -76,5 +79,6 @@ class AlphaChromosome(Individual):
     for i in range(sub_sample_size): 
       sfitness[i] = offsprings[i].fitness_calc(problem)
     self.fitness = np.mean(sfitness)
+    self.fitness_calc_time = time() - start
     best_offspring = np.max(offsprings)
     return self.fitness, best_offspring

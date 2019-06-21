@@ -20,6 +20,7 @@ class Individual(ABC):
       raise ValueError('The input parameter n, is not valid')
     
     self.fitness = float('-inf')
+    self.fitness_calc_time = float('-inf')
 
   @abstractmethod
   def mutation(self):
