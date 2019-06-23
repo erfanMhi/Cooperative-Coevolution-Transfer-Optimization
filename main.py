@@ -369,7 +369,7 @@ def main(args=False):
     print('Building models took {} minutes'.format(str((time()-now)/60)))
   else:
     try:
-      src_models = Tools.load_from_file(source_models_path + '_{args.src_version}')
+      src_models = Tools.load_from_file(source_models_path + '_{}'.format(args.src_version))
     except FileNotFoundError:
       print('Source models not exist in the {} path'.format(source_models_path))
 
