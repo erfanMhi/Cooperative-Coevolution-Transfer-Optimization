@@ -213,12 +213,15 @@ def transfer_cc_v1(problem, dims, reps, trans,
 
             s2_cfitness = np.zeros(s2_psize)
             best_chrom = Chromosome(dims)
-            for i in range(s2_psize): 
+            print('start fitness o ina')
+            for i in range(s2_psize):
+              
               s2_cfitness[i], best_offspring = offsprings[i].fitness_calc(problem, src_models,
                                                                           target_model, sample_size,
                                                                           sub_sample_size)
               if best_chrom < best_offspring: # Saving best Chromosome for future injection
                 best_chrom = best_offspring
+            print('end fitness o ina')
             if g/delta != 1:
               second_species, s2_fitness = total_selection(np.concatenate((second_species, offsprings)),
                                 np.concatenate((s2_fitness, s2_cfitness)), s2_psize)
@@ -252,7 +255,97 @@ def transfer_cc_v1(problem, dims, reps, trans,
   print('Finished')
   return fitness_hist_s1, fitness_hist_s2, (time_hist_s1 - start)
       
-      
+
+def transfer_cc_v2(problem, dims, reps, trans,
+                   s1_psize=50, s2_psize=20, gen=100,
+                   sample_size=50, sub_sample_size=50,
+                   src_models=[]):
+  start = time()
+  if trans['transfer'] and (not src_models):
+    raise ValueError('No probabilistic models stored for transfer optimization.')
+
+  delta = trans['delta']
+
+  init_func_s1 = lambda n: np.round(np.random.rand(n))
+  
+  fitness_hist_s1 = np.ndarray([reps, int((gen/delta * (delta-1)) + gen%delta) + 1, s1_psize], dtype=object)
+  fitness_hist_s2 = np.ndarray([reps, int(gen/delta), s2_psize], dtype=object)
+  time_hist_s1 = np.zeros([reps, int((gen/delta * (delta-1)) + gen%delta) + 1, s1_psize], dtype=object)
+  dims_s2 = len(src_models)+1
+
+  best_chrom = None # Best Chromosome to inject to the first species from second species
+  # Init with random a representative for each species
+  # representatives = [np.random.choice(species[i]) for i in range(len(species))]
+  for rep in range(reps):
+      print('------------------------- Repetition {} ---------------------------'.format(rep))
+      first_species = get_pop_init(s1_psize, dims, init_func_s1) # For choosing decision params
+      second_species = get_pop_init_s2(s2_psize, dims_s2) # For choosing alpha params
+      for i in range(s1_psize):
+        first_species[i].fitness_calc(problem)
+        time_hist_s1[rep, 0, i] = time()
+
+      bestfitness = np.max(first_species).fitness
+      fitness = Chromosome.fitness_to_numpy(first_species)
+      s2_fitness = None
+      fitness_hist_s1[rep, 0, :] = first_species
+      print('Generation %d best fitness of first species = %f' % (0, bestfitness))
+      for g in range(1, gen):
+        # Initialize a container for the next generation representatives
+        if trans['transfer'] and g % delta == 0:
+          ################# Add Evolution Strategy #####################
+            pass
+            # if g/delta != 1:
+            #   offsprings = total_crossover_s2(second_species)
+            #   for j in range(s2_psize): offsprings[j].mutation(1/dims_s2)
+            # else:
+            #   offsprings = second_species
+
+            # target_model = ProbabilisticModel(modelType='umd')
+            # target_model.buildModel(Chromosome.genes_to_numpy(first_species))
+
+            # s2_cfitness = np.zeros(s2_psize)
+            # best_chrom = Chromosome(dims)
+            # print('start fitness o ina')
+            # for i in range(s2_psize):
+              
+            #   s2_cfitness[i], best_offspring = offsprings[i].fitness_calc(problem, src_models,
+            #                                                               target_model, sample_size,
+            #                                                               sub_sample_size)
+            #   if best_chrom < best_offspring: # Saving best Chromosome for future injection
+            #     best_chrom = best_offspring
+            # print('end fitness o ina')
+            # if g/delta != 1:
+            #   second_species, s2_fitness = total_selection(np.concatenate((second_species, offsprings)),
+            #                     np.concatenate((s2_fitness, s2_cfitness)), s2_psize)
+            # else:
+            #   second_species, s2_fitness = total_selection(offsprings, s2_cfitness, s2_psize)
+            # # Replacing the best chromosome found by sampling from second species with the worst chromosome of first species
+            # first_species[-1] = best_chrom 
+
+            # best_fitness_s2 = s2_fitness[0]
+            # fitness_hist_s2[rep, int(g/delta)-1, :] = second_species
+            # print('Generation %d: Best Fitness of Second Species: %s' % (g, best_fitness_s2))
+            # print('Best Alpha generation {}: best fitness of second species = {}'.format(g, second_species[0].genes))
+        else:
+            # Crossover & Mutation
+            offsprings = total_crossover(first_species)
+            for j in range(s1_psize): offsprings[j].mutation(1/dims)
+              
+            # Fitness Calculation
+            cfitness = np.zeros(s1_psize)
+            for j in range(s1_psize): 
+              cfitness[j] = offsprings[j].fitness_calc(problem)
+              time_hist_s1[rep, int(np.ceil(g/delta*(delta-1))), i] = time()
+
+            # Selection
+            first_species, fitness = total_selection(np.concatenate((first_species, offsprings)),
+                                      np.concatenate((fitness, cfitness)), s1_psize)
+
+            bestfitness = fitness[0]
+            fitness_hist_s1[rep, int(np.ceil(g/delta*(delta-1))), :] = first_species
+            print('Generation %d best fitness of first species= %f' % (g, bestfitness))
+  print('Finished')
+  return fitness_hist_s1, fitness_hist_s2, (time_hist_s1 - start)
 
 
 def get_args():
@@ -385,7 +478,7 @@ def main(args=False):
                            sub_sample_size=args.sub_sample_size, src_models=src_models)
                   
   elif args.version == 'to':
-    return transfer_ea(target_problem, 1000, reps, trans, src_models=src_models)
+    return transfer_ea(target_problem, 1000, reps, trans, psize=args.s1_psize, src_models=src_models)
   elif args.version == 'ea':
     return evolutionary_algorithm(target_problem, 1000, src_models=src_models, stop_condition=args.stop_condition)
   else:
