@@ -2,6 +2,17 @@ import numpy as np
 from abc import ABC, abstractmethod
 from evolution.chromosome import Chromosome, AlphaChromosome
 
+
+def kid_generator(parent, mute_strength, genes_min_bounds=None, genes_max_bounds=None, genes_num=None):
+    # no crossover, only mutation
+    if genes_num==None:
+      genes_num = len(parent)
+    offspring = parent + mute_strength * np.random.randn(genes_num)
+    offspring = np.clip(offspring, genes_min_bounds, genes_max_bounds)
+    return offspring
+
+
+
 def crossover(p1, p2, alpha=np.random.rand(), ctype='uniform'):
   print('alpha: ', alpha)
   if ctype=='convex':
@@ -45,7 +56,7 @@ def total_selection(pop, fitnesses, psize):
   index = np.argsort(-fitnesses)  # default argsort is ascending
   return pop[index[:psize]], fitnesses[index[:psize]]
 
-def selection(pop, stype='roulette'):
+def selection(pop, stype='roulette', k=1):
   if stype=='roulette':
     sum_fit = np.sum([ch.fitness for ch in pop])
     pick = np.random.uniform(0, sum_fit)
@@ -55,7 +66,7 @@ def selection(pop, stype='roulette'):
         if current > pick:
             return chromosome
   elif stype=='tournament':
-      return max(np.random.choice(self.pop,k,False),key=lambda c:c.fitness)
+      return max(np.random.choice(pop, k, False),key=lambda c:c.fitness)
   else:
     raise ValueError('Type of selection which you entered is wrong')
 
@@ -85,3 +96,20 @@ def get_pop_init_s2(n, gn, init_func=np.random.rand):
       [np.ndarray] -- [Array of chromosomes]
   """
   return np.array([AlphaChromosome(gn, init_func) for _ in range(n)])
+
+
+
+def selection_adoption(parent, offspring, mute_strength, genes_num=None):
+  if genes_num==None:
+    genes_num = len(parent)
+  fp = parent.fitness
+  fk = offspring.fitness
+  p_target = 1/5
+  if fp < fk:     # kid better than parent
+      parent = offspring
+      ps = 1.     # kid win -> ps = 1 (successful offspring)
+  else:
+      ps = 0.
+  # adjust global mutation strength
+  mute_strength *= np.exp(1/np.sqrt(genes_num+1) * (ps - p_target)/(1 - p_target))
+  return parent, mute_strength
