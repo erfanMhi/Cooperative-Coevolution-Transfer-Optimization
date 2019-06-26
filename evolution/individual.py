@@ -40,6 +40,9 @@ class Individual(ABC):
   def __neg__(self):
     return -self.fitness
 
+  def __len__(self):
+      return len(self.genes)
+
   @staticmethod
   def chromosome_to_numpy(ch):
     return ch.genes
