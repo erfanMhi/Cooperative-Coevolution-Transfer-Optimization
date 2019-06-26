@@ -1,5 +1,6 @@
 from time import time
 from evolution.individual import *
+# from evolution.operators import kid_generator
 from to.probabilistic_model import ProbabilisticModel
 from to.mixture_model import MixtureModel
 
@@ -89,6 +90,40 @@ class AlphaChromosome(Individual):
     best_offspring = np.max(offsprings)
     return self.fitness, best_offspring
   
-class StrategyChromosome:
+class StrategyChromosome(Individual):
   def __init__(self, n, init_func=np.random.rand):
     super().__init__(n, init_func=init_func)
+
+  def mutation(self, mute_strength, genes_min_bounds=None, genes_max_bounds=None, genes_num=None):
+    if genes_num==None:
+        genes_num = len(self.genes)
+    self.genes = self.genes + mute_strength * np.random.randn(genes_num)
+    self.genes = np.clip(self.genes, genes_min_bounds, genes_max_bounds)
+    if np.sum(self.genes) == 0:
+      self.genes[-1] = 1
+
+  def fitness_calc(self, problem, src_models, target_model, sample_size, sub_sample_size): # You can implement this in a more optmized way using vectorizatioin but it will hurt modularity
+    start = time()
+    normalized_alpha = self.genes/np.sum(self.genes)
+    mixModel = MixtureModel(src_models, alpha=normalized_alpha)
+    mixModel.add_target_model(target_model)
+    # mixModel.createTable(Chromosome.genes_to_numpy(pop), True, 'umd')
+    # mixModel.EMstacking()
+    # mixModel.mutate()
+    print('sample start')
+    offsprings = mixModel.sample(sample_size)
+    print('sample end')
+    print('selecting start')
+    idx = np.random.randint(sample_size, size=sub_sample_size)
+    offsprings = offsprings[idx] # Creating sub_samples of samples
+    print('selecting end')
+    offsprings = np.array([Chromosome(offspring) for offspring in offsprings])
+    sfitness = np.zeros(sub_sample_size)
+    print('fitness_calc start')
+    for i in range(sub_sample_size): 
+      sfitness[i] = offsprings[i].fitness_calc(problem)
+    print('fitness_calc end') 
+    self.fitness = np.mean(sfitness)
+    self.fitness_calc_time = time() - start
+    best_offspring = np.max(offsprings)
+    return self.fitness, best_offspring
