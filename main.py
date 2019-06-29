@@ -403,6 +403,10 @@ def get_args():
                   type=int, nargs='?',
                   help='The same step-size which we use in evolution strategy')
   
+  parser.add_argument('--injection_type', default='elite',
+                type=str, nargs='?',
+                help='What method do you want to use for injection of species 2 to species 1?')
+  
 
   # parser.add_argument('-q', dest='matrix_num', default='a',
   #                     type=str, nargs='?',
