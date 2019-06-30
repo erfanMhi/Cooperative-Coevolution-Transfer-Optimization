@@ -125,5 +125,5 @@ class StrategyChromosome(Individual):
     print('fitness_calc end') 
     self.fitness = np.mean(sfitness)
     self.fitness_calc_time = time() - start
-    best_offspring = np.max(offsprings)
-    return self.fitness, best_offspring
+    # best_offspring = np.max(offsprings)
+    return self.fitness, offsprings

@@ -56,6 +56,10 @@ def total_selection(pop, fitnesses, psize):
   index = np.argsort(-fitnesses)  # default argsort is ascending
   return pop[index[:psize]], fitnesses[index[:psize]]
 
+def total_selection_pop(pop, psize):
+  index = np.argsort(-pop)
+  return pop[index[:psize]]
+  
 def selection(pop, stype='roulette', k=1):
   if stype=='roulette':
     sum_fit = np.sum([ch.fitness for ch in pop])
