@@ -170,7 +170,7 @@ def transfer_ea(problem, dims, reps, trans, psize=50, gen=100, src_models=[]):
 def transfer_cc_v1(problem, dims, reps, trans,
                    s1_psize=50, s2_psize=20, gen=100,
                    sample_size=50, sub_sample_size=50,
-                   src_models=[]):
+                   injection_type='elite', src_models=[]):
   start = time()
   if trans['transfer'] and (not src_models):
     raise ValueError('No probabilistic models stored for transfer optimization.')
@@ -260,7 +260,7 @@ def transfer_cc_v1(problem, dims, reps, trans,
 def transfer_cc_v2(problem, dims, reps, trans,
                    s1_psize=50, s2_psize=1, gen=100,
                    sample_size=50, sub_sample_size=50,
-                   mutation_strength=1, src_models=[]):
+                   mutation_strength=1, injection_type='elite', src_models=[]):
   start = time()
   if trans['transfer'] and (not src_models):
     raise ValueError('No probabilistic models stored for transfer optimization.')
@@ -315,7 +315,7 @@ def transfer_cc_v2(problem, dims, reps, trans,
             print('start fitness o ina')
             # for i in range(s2_psize):
               
-            _, best_chrom = offspring.fitness_calc(problem, src_models, target_model,
+            _, sampled_offsprings = offspring.fitness_calc(problem, src_models, target_model,
                                                           sample_size, sub_sample_size)
               # if best_chrom < best_offspring: # Saving best Chromosome for future injection
               #   best_chrom = best_offspring
@@ -324,7 +324,10 @@ def transfer_cc_v2(problem, dims, reps, trans,
               second_specie, mutation_strength = selection_adoption(second_specie, offspring, mutation_strength)
 
             # Replacing the best chromosome found by sampling from second species with the worst chromosome of first species
-            first_species[-1] = best_chrom 
+            if injection_type == 'elite':
+                first_species[-1] == np.max(sampled_offsprings)
+            elif injection_type == 'full':
+                first_species = total_selection_pop(np.concatenate((first_species, sampled_offsprings)), s1_psize)
 
             fitness_hist_s2[rep, int(g/delta)-1, :] = second_specie
             mutation_strength_hist[rep, int(g/delta)-1, :]  = mutation_strength
@@ -492,7 +495,7 @@ def main(args=False):
       return transfer_cc_v2(target_problem, 1000, reps, trans, s1_psize=args.s1_psize,
                            s2_psize=1, gen=100, sample_size=args.sample_size,
                            sub_sample_size=args.sub_sample_size, src_models=src_models, 
-                           mutation_strength=args.mutation_strength)                 
+                           mutation_strength=args.mutation_strength, injection_type=args.injection_type)                 
   elif args.version == 'to':
     return transfer_ea(target_problem, 1000, reps, trans, psize=args.s1_psize, src_models=src_models)
   elif args.version == 'ea':
