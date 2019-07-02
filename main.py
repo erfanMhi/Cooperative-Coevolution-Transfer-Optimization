@@ -260,7 +260,8 @@ def transfer_cc_v1(problem, dims, reps, trans,
 def transfer_cc_v2(problem, dims, reps, trans,
                    s1_psize=50, s2_psize=1, gen=100,
                    sample_size=50, sub_sample_size=50,
-                   mutation_strength=1, injection_type='elite', src_models=[]):
+                   mutation_strength=1, injection_type='elite', 
+                   to_repititon_num=1, src_models=[]):
   start = time()
   if trans['transfer'] and (not src_models):
     raise ValueError('No probabilistic models stored for transfer optimization.')
@@ -296,43 +297,43 @@ def transfer_cc_v2(problem, dims, reps, trans,
         # Initialize a container for the next generation representatives
         if trans['transfer'] and g % delta == 0:
           ################# Add Evolution Strategy #####################
-            
-            if g/delta != 1:
-              print('Test Mutation: ')
-              offspring = deepcopy(second_specie)
-              print ('Offspring genes before mutation: {}'.format(offspring.genes))
-              offspring.mutation(mutation_strength, 0, 1)
-              print ('Offspring genes after mutation: {}'.format(offspring.genes))
-              print('Test Finished')
-              # offsprings = total_crossover_s2(second_species)
-              # for j in range(s2_psize): offsprings[j].mutation(1/dims_s2)
-            else:
-              offspring = second_specie
+            for tg in range(to_repititon_num):
+              if g/delta != 1 or tg != 0:
+                print('Test Mutation: ')
+                offspring = deepcopy(second_specie)
+                print ('Offspring genes before mutation: {}'.format(offspring.genes))
+                offspring.mutation(mutation_strength, 0, 1)
+                print ('Offspring genes after mutation: {}'.format(offspring.genes))
+                print('Test Finished')
+                # offsprings = total_crossover_s2(second_species)
+                # for j in range(s2_psize): offsprings[j].mutation(1/dims_s2)
+              else:
+                offspring = second_specie
 
-            target_model = ProbabilisticModel(modelType='umd')
-            target_model.buildModel(Chromosome.genes_to_numpy(first_species))
+              target_model = ProbabilisticModel(modelType='umd')
+              target_model.buildModel(Chromosome.genes_to_numpy(first_species))
 
-            print('start fitness o ina')
-            # for i in range(s2_psize):
-              
-            _, sampled_offsprings = offspring.fitness_calc(problem, src_models, target_model,
-                                                          sample_size, sub_sample_size)
-              # if best_chrom < best_offspring: # Saving best Chromosome for future injection
-              #   best_chrom = best_offspring
-            print('end fitness o ina')
-            if g/delta != 1:
-              second_specie, mutation_strength = selection_adoption(second_specie, offspring, mutation_strength)
+              print('start fitness o ina')
+              # for i in range(s2_psize):
+                
+              _, sampled_offsprings = offspring.fitness_calc(problem, src_models, target_model,
+                                                            sample_size, sub_sample_size)
+                # if best_chrom < best_offspring: # Saving best Chromosome for future injection
+                #   best_chrom = best_offspring
+              print('end fitness o ina')
+              if g/delta != 1:
+                second_specie, mutation_strength = selection_adoption(second_specie, offspring, mutation_strength)
 
-            # Replacing the best chromosome found by sampling from second species with the worst chromosome of first species
-            if injection_type == 'elite':
-                first_species[-1] == np.max(sampled_offsprings)
-            elif injection_type == 'full':
-                first_species = total_selection_pop(np.concatenate((first_species, sampled_offsprings)), s1_psize)
+              # Replacing the best chromosome found by sampling from second species with the worst chromosome of first species
+              if injection_type == 'elite':
+                  first_species[-1] == np.max(sampled_offsprings)
+              elif injection_type == 'full':
+                  first_species = total_selection_pop(np.concatenate((first_species, sampled_offsprings)), s1_psize)
 
-            fitness_hist_s2[rep, int(g/delta)-1, :] = second_specie
-            mutation_strength_hist[rep, int(g/delta)-1, :]  = mutation_strength
-            print('Generation %d: Best Fitness of Second Species: %s' % (g, second_specie.fitness))
-            print('Best Alpha generation {}: best fitness of second species = {}'.format(g, second_specie.genes))
+              fitness_hist_s2[rep, int(g/delta)-1, :] = second_specie
+              mutation_strength_hist[rep, int(g/delta)-1, :]  = mutation_strength
+              print('Generation %d: Best Fitness of Second Species: %s' % (g, second_specie.fitness))
+              print('Best Alpha generation {}: best fitness of second species = {}'.format(g, second_specie.genes))
         else:
             # Crossover & Mutation
             offsprings = total_crossover(first_species)
@@ -409,6 +410,10 @@ def get_args():
   parser.add_argument('--injection_type', default='elite',
                 type=str, nargs='?',
                 help='What method do you want to use for injection of species 2 to species 1?')
+
+  parser.add_argument('--to_repititon_num', default=1,
+              type=int, nargs='?',
+              help='How many time should we repeat the transferring step in evolution strategy?')
   
 
   # parser.add_argument('-q', dest='matrix_num', default='a',
@@ -495,7 +500,8 @@ def main(args=False):
       return transfer_cc_v2(target_problem, 1000, reps, trans, s1_psize=args.s1_psize,
                            s2_psize=1, gen=100, sample_size=args.sample_size,
                            sub_sample_size=args.sub_sample_size, src_models=src_models, 
-                           mutation_strength=args.mutation_strength, injection_type=args.injection_type)                 
+                           mutation_strength=args.mutation_strength, injection_type=args.injection_type,
+                           to_repititon_num=args.to_repititon_num)                 
   elif args.version == 'to':
     return transfer_ea(target_problem, 1000, reps, trans, psize=args.s1_psize, src_models=src_models)
   elif args.version == 'ea':
