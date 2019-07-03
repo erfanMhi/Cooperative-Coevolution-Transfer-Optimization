@@ -260,7 +260,7 @@ def transfer_cc_v1(problem, dims, reps, trans,
 def transfer_cc_v2(problem, dims, reps, trans,
                    s1_psize=50, s2_psize=1, gen=100,
                    sample_size=50, sub_sample_size=50,
-                   mutation_strength=1, injection_type='elite', 
+                   mutation_strength=1, injection_type='full', 
                    to_repititon_num=1, src_models=[]):
   start = time()
   if trans['transfer'] and (not src_models):
