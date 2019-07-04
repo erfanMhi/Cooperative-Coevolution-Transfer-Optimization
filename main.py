@@ -501,7 +501,14 @@ def main(args=False):
                            s2_psize=1, gen=100, sample_size=args.sample_size,
                            sub_sample_size=args.sub_sample_size, src_models=src_models, 
                            mutation_strength=args.mutation_strength, injection_type=args.injection_type,
-                           to_repititon_num=args.to_repititon_num)                 
+                           to_repititon_num=args.to_repititon_num)
+  elif args.version == 'v3':
+    pass
+      # return transfer_cc_v2(target_problem, 1000, reps, trans, s1_psize=args.s1_psize,
+      #               s2_psize=1, gen=100, sample_size=args.sample_size,
+      #               sub_sample_size=args.sub_sample_size, src_models=src_models, 
+      #               mutation_strength=args.mutation_strength, injection_type=args.injection_type,
+      #               to_repititon_num=args.to_repititon_num)       
   elif args.version == 'to':
     return transfer_ea(target_problem, 1000, reps, trans, psize=args.s1_psize, src_models=src_models)
   elif args.version == 'ea':
