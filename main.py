@@ -261,7 +261,8 @@ def transfer_cc_v2(problem, dims, reps, trans,
                    s1_psize=50, s2_psize=1, gen=100,
                    sample_size=50, sub_sample_size=50,
                    mutation_strength=1, injection_type='full', 
-                   to_repititon_num=1, src_models=[]):
+                   to_repititon_num=1, selection_version='v1', 
+                   c=2, src_models=[]):
   start = time()
   if trans['transfer'] and (not src_models):
     raise ValueError('No probabilistic models stored for transfer optimization.')
@@ -288,6 +289,9 @@ def transfer_cc_v2(problem, dims, reps, trans,
         first_species[i].fitness_calc(problem)
         time_hist_s1[rep, 0, i] = time()
 
+      second_species_gen_num = 0 # used in selection version 2 for calculating the g
+      second_species_gen_success_num = 0 # used in selection version 2 for calculating the g
+      
       bestfitness = np.max(first_species).fitness
       fitness = Chromosome.fitness_to_numpy(first_species)
       s2_fitness = None
@@ -301,6 +305,7 @@ def transfer_cc_v2(problem, dims, reps, trans,
               if g/delta != 1 or tg != 0:
                 print('Test Mutation: ')
                 offspring = deepcopy(second_specie)
+                second_species_gen_num += 1
                 print ('Offspring genes before mutation: {}'.format(offspring.genes))
                 offspring.mutation(mutation_strength, 0, 1)
                 print ('Offspring genes after mutation: {}'.format(offspring.genes))
@@ -321,8 +326,14 @@ def transfer_cc_v2(problem, dims, reps, trans,
                 # if best_chrom < best_offspring: # Saving best Chromosome for future injection
                 #   best_chrom = best_offspring
               print('end fitness o ina')
-              if g/delta != 1:
-                second_specie, mutation_strength = selection_adoption(second_specie, offspring, mutation_strength)
+              if g/delta != 1 or tg != 0:
+                if selection_version == 'v1':
+                  second_specie, mutation_strength = selection_adoption(second_specie, offspring, mutation_strength)
+                elif selection_version == 'v2':
+                  second_specie, mutation_strength, second_species_gen_success_num = selection_adoption(second_specie, offspring, mutation_strength,
+                                                                                                      second_species_gen_num, second_species_gen_success_num, c=c)
+                else:
+                  raise ValueError('selection_version value is wrong')
 
               # Replacing the best chromosome found by sampling from second species with the worst chromosome of first species
               if injection_type == 'elite':
@@ -415,6 +426,14 @@ def get_args():
               type=int, nargs='?',
               help='How many time should we repeat the transferring step in evolution strategy?')
   
+  parser.add_argument('--selection_version', default='v1',
+              type=str, nargs='?',
+              help='What selection version should we use in evolution strategy E(1 + 1)?')
+
+  parser.add_argument('-c', default=2,
+                  type=int, nargs='?',
+                  help='Parameter of E(1 + 1) algorithm selection')
+
 
   # parser.add_argument('-q', dest='matrix_num', default='a',
   #                     type=str, nargs='?',
@@ -501,7 +520,7 @@ def main(args=False):
                            s2_psize=1, gen=100, sample_size=args.sample_size,
                            sub_sample_size=args.sub_sample_size, src_models=src_models, 
                            mutation_strength=args.mutation_strength, injection_type=args.injection_type,
-                           to_repititon_num=args.to_repititon_num)
+                           to_repititon_num=args.to_repititon_num, selection_version=args.selection_version, c=args.c)
   elif args.version == 'v3':
     pass
       # return transfer_cc_v2(target_problem, 1000, reps, trans, s1_psize=args.s1_psize,
