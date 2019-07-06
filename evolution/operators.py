@@ -106,6 +106,7 @@ def get_pop_init_s2(n, gn, init_func=np.random.rand):
 def selection_adoption(parent, offspring, mute_strength, genes_num=None):
   if genes_num==None:
     genes_num = len(parent)
+
   fp = parent.fitness
   fk = offspring.fitness
   p_target = 1/5
@@ -116,4 +117,29 @@ def selection_adoption(parent, offspring, mute_strength, genes_num=None):
       ps = 0.
   # adjust global mutation strength
   mute_strength *= np.exp(1/np.sqrt(genes_num+1) * (ps - p_target)/(1 - p_target))
+
   return parent, mute_strength
+
+def selection_adoption_v2(parent, offspring, mute_strength, gen, success_gen, c=2, genes_num=None):
+  if genes_num==None:
+    genes_num = len(parent)
+
+  fp = parent.fitness
+  fk = offspring.fitness
+  p_target = 1/5
+  if fp < fk:     # kid better than parent
+      parent = offspring
+      ps = 1.     # kid win -> ps = 1 (successful offspring)
+  else:
+      ps = 0.
+  success_gen = success_gen+ps
+  print('success_gen is {}'.format(success_gen))
+  print('gen is {}'.format(gen))
+  g = (success_gen)/gen
+  print('g is {}'.format(g))
+  c_sq = c**2
+  if g > p_target:
+    mute_strength = mute_strength/c_sq
+  else:
+    mute_strength = c_sq*mute_strength
+  return parent, mute_strength, success_gen
