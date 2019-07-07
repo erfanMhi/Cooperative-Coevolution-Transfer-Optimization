@@ -279,7 +279,8 @@ def transfer_cc_v2(problem, dims, reps, trans,
   dims_s2 = len(src_models)+1
 
   best_chrom = None # Best Chromosome to inject to the first species from second species
-
+  
+  ms_value = mutation_strength
   for rep in range(reps):
       print('------------------------- Repetition {} ---------------------------'.format(rep))
       first_species = get_pop_init(s1_psize, dims, init_func_s1) # For choosing decision params
@@ -291,7 +292,7 @@ def transfer_cc_v2(problem, dims, reps, trans,
 
       second_species_gen_num = 0 # used in selection version 2 for calculating the g
       second_species_gen_success_num = 0 # used in selection version 2 for calculating the g
-      
+      mutation_strength = ms_value
       bestfitness = np.max(first_species).fitness
       fitness = Chromosome.fitness_to_numpy(first_species)
       s2_fitness = None
@@ -318,19 +319,19 @@ def transfer_cc_v2(problem, dims, reps, trans,
               target_model = ProbabilisticModel(modelType='umd')
               target_model.buildModel(Chromosome.genes_to_numpy(first_species))
 
-              print('start fitness o ina')
+              # print('start fitness o ina')
               # for i in range(s2_psize):
                 
               _, sampled_offsprings = offspring.fitness_calc(problem, src_models, target_model,
                                                             sample_size, sub_sample_size)
                 # if best_chrom < best_offspring: # Saving best Chromosome for future injection
                 #   best_chrom = best_offspring
-              print('end fitness o ina')
+              # print('end fitness o ina')
               if g/delta != 1 or tg != 0:
                 if selection_version == 'v1':
                   second_specie, mutation_strength = selection_adoption(second_specie, offspring, mutation_strength)
                 elif selection_version == 'v2':
-                  second_specie, mutation_strength, second_species_gen_success_num = selection_adoption(second_specie, offspring, mutation_strength,
+                  second_specie, mutation_strength, second_species_gen_success_num = selection_adoption_v2(second_specie, offspring, mutation_strength,
                                                                                                       second_species_gen_num, second_species_gen_success_num, c=c)
                 else:
                   raise ValueError('selection_version value is wrong')
@@ -345,6 +346,7 @@ def transfer_cc_v2(problem, dims, reps, trans,
               mutation_strength_hist[rep, int(g/delta)-1, :]  = mutation_strength
               print('Generation %d: Best Fitness of Second Species: %s' % (g, second_specie.fitness))
               print('Best Alpha generation {}: best fitness of second species = {}'.format(g, second_specie.genes))
+              print('generation {}: mutation strength = {}'.format(g, mutation_strength))
         else:
             # Crossover & Mutation
             offsprings = total_crossover(first_species)
