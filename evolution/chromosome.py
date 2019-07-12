@@ -87,8 +87,8 @@ class AlphaChromosome(Individual):
     print('fitness_calc end') 
     self.fitness = np.mean(sfitness)
     self.fitness_calc_time = time() - start
-    best_offspring = np.max(offsprings)
-    return self.fitness, best_offspring
+    # best_offspring = np.max(offsprings)
+    return self.fitness, offsprings
   
 class StrategyChromosome(Individual):
   def __init__(self, n, init_func=np.random.rand):
