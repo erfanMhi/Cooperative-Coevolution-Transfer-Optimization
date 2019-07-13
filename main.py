@@ -214,22 +214,28 @@ def transfer_cc_v1(problem, dims, reps, trans,
 
             s2_cfitness = np.zeros(s2_psize)
             best_chrom = Chromosome(dims)
-            print('start fitness o ina')
+            sampled_offsprings = np.ndarray(s2_psize*sub_sample_size, dtype=object)
+
             for i in range(s2_psize):
-              
-              s2_cfitness[i], best_offspring = offsprings[i].fitness_calc(problem, src_models,
-                                                                          target_model, sample_size,
-                                                                          sub_sample_size)
-              if best_chrom < best_offspring: # Saving best Chromosome for future injection
-                best_chrom = best_offspring
-            print('end fitness o ina')
+              s2_cfitness[i], offsprings = offsprings[i].fitness_calc(problem, src_models,
+                                                                      target_model, sample_size,
+                                                                      sub_sample_size)
+              sampled_offsprings[:i*sub_sample_size] = offsprings
+
+            # Injecting elite chromosomes to first species
+            if injection_type == 'elite':
+              first_species[-1] == np.max(sampled_offsprings)
+            elif injection_type == 'full':
+              first_species = total_selection_pop(np.concatenate((first_species, sampled_offsprings)), s1_psize)
+
+            # Selecting elite chromosome from second species
             if g/delta != 1:
               second_species, s2_fitness = total_selection(np.concatenate((second_species, offsprings)),
                                 np.concatenate((s2_fitness, s2_cfitness)), s2_psize)
             else:
               second_species, s2_fitness = total_selection(offsprings, s2_cfitness, s2_psize)
             # Replacing the best chromosome found by sampling from second species with the worst chromosome of first species
-            first_species[-1] = best_chrom 
+            # first_species[-1] = best_chrom 
 
             best_fitness_s2 = s2_fitness[0]
             fitness_hist_s2[rep, int(g/delta)-1, :] = second_species
@@ -332,7 +338,7 @@ def transfer_cc_v2(problem, dims, reps, trans,
                   second_specie, mutation_strength = selection_adoption(second_specie, offspring, mutation_strength)
                 elif selection_version == 'v2':
                   second_specie, mutation_strength, second_species_gen_success_num = selection_adoption_v2(second_specie, offspring, mutation_strength,
-                                                                                                      second_species_gen_num, second_species_gen_success_num, c=c)
+                                                                                                          second_species_gen_num, second_species_gen_success_num, c=c)
                 else:
                   raise ValueError('selection_version value is wrong')
 
@@ -480,7 +486,7 @@ def main(args=False):
 
     KP_uc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_uc_rk'))
     KP_sc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_sc_ak'))
-    target_problem = KP_sc_ak
+    target_problem = KP_uc_ak
   else:
     print('Source problems version is not correct {}'.format(args.src_version))
 
