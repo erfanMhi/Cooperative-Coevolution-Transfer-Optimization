@@ -95,5 +95,21 @@ class MixtureModel(object):
         solutions = solutions[:nSol, :]
         return solutions
 
+    def sample_dic(self, nSol):
+        model_sample_pairs = np.ndarray(self.nModels, dtype=object)
+        indSamples = np.ceil(nSol*self.alpha).astype(int)
+        print('indSamples : {}'.format(indSamples))
+        for i in range(self.nModels):
+            if indSamples[i] == 0:
+                pass
+            else:
+                model_sample_pairs[i] = self.model_list[i].sample(indSamples[i])
+        # removing random solutions
+        print('sample_length: ', np.sum([len(s) for s in model_sample_pairs if s is not None]))
+        # solutions = solutions[np.random.permutation(solutions.shape[0]), :]
+        # solutions = solutions[:nSol, :]
+        return model_sample_pairs
+
+
     def n_samples(self, ind, nSol):
         return np.ceil(nSol * self.alpha[ind]).astype(int)
