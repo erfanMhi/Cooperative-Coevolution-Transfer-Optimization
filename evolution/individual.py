@@ -26,6 +26,8 @@ class Individual(ABC):
   def mutation(self):
     pass
 
+  def __str__(self):
+    return "fitness: {} & genes: {}".format(self.fitness, self.genes)
 
   @abstractmethod
   def fitness_calc(self):
