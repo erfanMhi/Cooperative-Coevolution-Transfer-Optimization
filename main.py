@@ -14,21 +14,24 @@ from to.mixture_model import MixtureModel
 from evolution.chromosome import *
 
 
-def evolutionary_algorithm(problem, dims, psize=100, gen=100, src_models=[], stop_condition=True):
+def evolutionary_algorithm(problem, dims, psize=100, gen=100, src_models=[], stop_condition=True, create_model=True):
   
   fitness_hist = np.zeros((gen, psize))
+  fitness_time = np.zeros((gen))
 
   init_func = lambda n: np.round(np.random.rand(n))
   pop = get_pop_init(psize, dims, init_func)
-
+  start = time()
   for i in range(psize): pop[i].fitness_calc(problem)
 
   bestfitness = np.max(pop).fitness
   fitness = Chromosome.fitness_to_numpy(pop)
   fitness_hist[0, :] = fitness
 
+  fitness_time[0] = start - time()
   counter = 0 # Generation Repetition without fitness improvement counter
   for i in range(1, gen):
+      start = time()
 
       # Crossover & Mutation
       offsprings = total_crossover(pop)
@@ -52,15 +55,18 @@ def evolutionary_algorithm(problem, dims, psize=100, gen=100, src_models=[], sto
           counter = 0
       else:
           counter += 1
+      fitness_time[i] = time() - start
       if counter == 20 and stop_condition:
           fitness_hist[i:, :] = fitness[0]
           break;
-  best_sol = pop[0];
-  model = ProbabilisticModel('umd')
-  print('build model input shape: ', Chromosome.genes_to_numpy(pop).shape)
-  model.buildModel(Chromosome.genes_to_numpy(pop))
-  src_models.append(model)
-  return src_models, best_sol, fitness_hist
+  best_sol = pop[0]
+  if create_model:
+    model = ProbabilisticModel('umd')
+    print('build model input shape: ', Chromosome.genes_to_numpy(pop).shape)
+    model.buildModel(Chromosome.genes_to_numpy(pop))
+    src_models.append(model)
+  
+  return src_models, best_sol, fitness_hist, fitness_time
 
 
 def transfer_ea(problem, dims, reps, trans, psize=50, gen=100, src_models=[]):
@@ -71,19 +77,23 @@ def transfer_ea(problem, dims, reps, trans, psize=50, gen=100, src_models=[]):
 
   init_func = lambda n: np.round(np.random.rand(n))
   fitness_hist = np.zeros([reps, gen, psize])
+  fitness_time = np.zeros((reps, gen,))
   alpha = list()
 
   for rep in range(reps):
       alpha_rep = []
+
       pop = get_pop_init(psize, dims, init_func)
+      start = time()
       for i in range(psize): pop[i].fitness_calc(problem)
 
       bestfitness = np.max(pop).fitness
       fitness = Chromosome.fitness_to_numpy(pop)
       fitness_hist[rep, 0, :] = fitness
-
+      fitness_time[rep, 0] = time() - start
       print('Generation 0 best fitness = %f' % bestfitness)
       for i in range(1, gen):
+          start = time()
           if trans['transfer'] and i % trans['delta'] == 0:
               mixModel = MixtureModel(src_models)
               mixModel.createTable(Chromosome.genes_to_numpy(pop), True, 'umd')
@@ -111,11 +121,12 @@ def transfer_ea(problem, dims, reps, trans, psize=50, gen=100, src_models=[]):
 
           bestfitness = fitness[0]
           fitness_hist[rep, i, :] = fitness
+          fitness_time[rep, i] = time() - start
           print('Generation %d best fitness = %f' % (i, bestfitness))
 
       alpha.append(alpha_rep)
 
-  return fitness_hist, alpha
+  return fitness_hist, alpha, fitness_time
 
 # def transfer_cc(problem, dims, reps, trans, psize=50, gen=100, src_models=[]):
 
@@ -171,7 +182,7 @@ def transfer_cc_v1(problem, dims, reps, trans,
                    s1_psize=50, s2_psize=20, gen=100,
                    sample_size=50, sub_sample_size=50,
                    injection_type='elite', src_models=[]):
-  start = time()
+
   if trans['transfer'] and (not src_models):
     raise ValueError('No probabilistic models stored for transfer optimization.')
 
@@ -181,7 +192,7 @@ def transfer_cc_v1(problem, dims, reps, trans,
   
   fitness_hist_s1 = np.ndarray([reps, int((gen/delta * (delta-1)) + gen%delta) + 1, s1_psize], dtype=object)
   fitness_hist_s2 = np.ndarray([reps, int(gen/delta), s2_psize], dtype=object)
-  time_hist_s1 = np.zeros([reps, int((gen/delta * (delta-1)) + gen%delta) + 1, s1_psize], dtype=object)
+  time_hist_s1 = np.zeros([reps, int((gen/delta * (delta-1)) + gen%delta) + 1], dtype=object)
   dims_s2 = len(src_models)+1
 
   best_chrom = None # Best Chromosome to inject to the first species from second species
@@ -191,15 +202,18 @@ def transfer_cc_v1(problem, dims, reps, trans,
       print('------------------------- Repetition {} ---------------------------'.format(rep))
       first_species = get_pop_init(s1_psize, dims, init_func_s1) # For choosing decision params
       second_species = get_pop_init_s2(s2_psize, dims_s2) # For choosing alpha params
+      start = time()
+      
       for i in range(s1_psize):
         first_species[i].fitness_calc(problem)
-        time_hist_s1[rep, 0, i] = time()
 
       bestfitness = np.max(first_species).fitness
       fitness = Chromosome.fitness_to_numpy(first_species)
       s2_fitness = None
       fitness_hist_s1[rep, 0, :] = first_species
+      time_hist_s1[rep, 0] = time() - start
       print('Generation %d best fitness of first species = %f' % (0, bestfitness))
+      start = time()
       for g in range(1, gen):
         # Initialize a container for the next generation representatives
         if trans['transfer'] and g % delta == 0:
@@ -250,7 +264,6 @@ def transfer_cc_v1(problem, dims, reps, trans,
             cfitness = np.zeros(s1_psize)
             for j in range(s1_psize): 
               cfitness[j] = offsprings[j].fitness_calc(problem)
-              time_hist_s1[rep, int(np.ceil(g/delta*(delta-1))), i] = time()
 
             # Selection
             first_species, fitness = total_selection(np.concatenate((first_species, offsprings)),
@@ -258,9 +271,11 @@ def transfer_cc_v1(problem, dims, reps, trans,
 
             bestfitness = fitness[0]
             fitness_hist_s1[rep, int(np.ceil(g/delta*(delta-1))), :] = first_species
+            time_hist_s1[rep, int(np.ceil(g/delta*(delta-1)))] = time() - start
             print('Generation %d best fitness of first species= %f' % (g, bestfitness))
+            start = time()
   print('Finished')
-  return fitness_hist_s1, fitness_hist_s2, (time_hist_s1 - start)
+  return fitness_hist_s1, fitness_hist_s2, time_hist_s1
       
 
 def transfer_cc_v2(problem, dims, reps, trans,
@@ -268,8 +283,8 @@ def transfer_cc_v2(problem, dims, reps, trans,
                    sample_size=50, sub_sample_size=50,
                    mutation_strength=1, injection_type='full', 
                    to_repititon_num=1, selection_version='v1', 
-                   c=2, src_models=[]):
-  start = time()
+                   c=2, src_models=[], efficient_version=False):
+  
   if trans['transfer'] and (not src_models):
     raise ValueError('No probabilistic models stored for transfer optimization.')
 
@@ -291,10 +306,10 @@ def transfer_cc_v2(problem, dims, reps, trans,
       print('------------------------- Repetition {} ---------------------------'.format(rep))
       first_species = get_pop_init(s1_psize, dims, init_func_s1) # For choosing decision params
       # second_species = get_pop_init_s2(s2_psize, dims_s2) # For choosing alpha params
+      start = time()
       second_specie = StrategyChromosome(dims_s2)
       for i in range(s1_psize):
         first_species[i].fitness_calc(problem)
-        time_hist_s1[rep, 0, i] = time()
 
       second_species_gen_num = 0 # used in selection version 2 for calculating the g
       second_species_gen_success_num = 0 # used in selection version 2 for calculating the g
@@ -303,7 +318,11 @@ def transfer_cc_v2(problem, dims, reps, trans,
       fitness = Chromosome.fitness_to_numpy(first_species)
       s2_fitness = None
       fitness_hist_s1[rep, 0, :] = first_species
+      time_hist_s1[rep, 0] = time() - start
       print('Generation %d best fitness of first species = %f' % (0, bestfitness))
+      start = time()
+      prev_samples = None
+      genes_differ = None
       for g in range(1, gen):
         # Initialize a container for the next generation representatives
         if trans['transfer'] and g % delta == 0:
@@ -313,9 +332,11 @@ def transfer_cc_v2(problem, dims, reps, trans,
                 print('Test Mutation: ')
                 offspring = deepcopy(second_specie)
                 second_species_gen_num += 1
-                print ('Offspring genes before mutation: {}'.format(offspring.genes))
-                offspring.mutation(mutation_strength, 0, 1)
-                print ('Offspring genes after mutation: {}'.format(offspring.genes))
+                print ('Offspring genes before mutation: {}'.format(offspring.genes/np.sum(offspring.genes)*50))
+                genes_differ = offspring.mutation(mutation_strength, 0, 1)
+                print ('Offspring genes after mutation: {}'.format(offspring.genes/np.sum(offspring.genes)*50))
+                print ('Genes Difference: {}'.format(genes_differ))
+                print ('Genes Difference sum: {}'.format(np.sum(genes_differ)))
                 print('Test Finished')
                 # offsprings = total_crossover_s2(second_species)
                 # for j in range(s2_psize): offsprings[j].mutation(1/dims_s2)
@@ -327,21 +348,31 @@ def transfer_cc_v2(problem, dims, reps, trans,
 
               # print('start fitness o ina')
               # for i in range(s2_psize):
-                
-              _, sampled_offsprings = offspring.fitness_calc(problem, src_models, target_model,
+
+              if efficient_version:
+                _, sampled_offsprings, prev_samples_tmp = offspring.fitness_calc(problem, src_models, target_model, sample_size,
+                                                                sub_sample_size, mutation_vec=genes_differ, prev_samples=deepcopy(prev_samples),
+                                                                efficient_version=True)
+              else:
+                _, sampled_offsprings = offspring.fitness_calc(problem, src_models, target_model,
                                                             sample_size, sub_sample_size)
                 # if best_chrom < best_offspring: # Saving best Chromosome for future injection
                 #   best_chrom = best_offspring
               # print('end fitness o ina')
+
+                # print('hereee')
+              is_off_selected = False
               if g/delta != 1 or tg != 0:
                 if selection_version == 'v1':
-                  second_specie, mutation_strength = selection_adoption(second_specie, offspring, mutation_strength)
+                  second_specie, mutation_strength, is_off_selected = selection_adoption(second_specie, offspring, mutation_strength)
                 elif selection_version == 'v2':
                   second_specie, mutation_strength, second_species_gen_success_num = selection_adoption_v2(second_specie, offspring, mutation_strength,
                                                                                                           second_species_gen_num, second_species_gen_success_num, c=c)
                 else:
                   raise ValueError('selection_version value is wrong')
 
+              if efficient_version and (is_off_selected or (g/delta == 1 and tg == 0)):
+                prev_samples = prev_samples_tmp
               # Replacing the best chromosome found by sampling from second species with the worst chromosome of first species
               if injection_type == 'elite':
                   first_species[-1] == np.max(sampled_offsprings)
@@ -362,7 +393,6 @@ def transfer_cc_v2(problem, dims, reps, trans,
             cfitness = np.zeros(s1_psize)
             for j in range(s1_psize): 
               cfitness[j] = offsprings[j].fitness_calc(problem)
-              time_hist_s1[rep, int(np.ceil(g/delta*(delta-1))), i] = time()
 
             # Selection
             first_species, fitness = total_selection(np.concatenate((first_species, offsprings)),
@@ -370,9 +400,11 @@ def transfer_cc_v2(problem, dims, reps, trans,
 
             bestfitness = fitness[0]
             fitness_hist_s1[rep, int(np.ceil(g/delta*(delta-1))), :] = first_species
+            time_hist_s1[rep, int(np.ceil(g/delta*(delta-1)))] = time() - start
             print('Generation %d best fitness of first species= %f' % (g, bestfitness))
+            start = time()
   print('Finished')
-  return fitness_hist_s1, fitness_hist_s2, mutation_strength_hist, (time_hist_s1 - start)
+  return fitness_hist_s1, fitness_hist_s2, mutation_strength_hist, time_hist_s1
 
 
 def get_args():
@@ -442,6 +474,10 @@ def get_args():
                   type=int, nargs='?',
                   help='Parameter of E(1 + 1) algorithm selection')
 
+  parser.add_argument('--efficient_version', default=False,
+                        type=bool, nargs='?',
+                        help='Efficient version of evaluation strategy version?')
+
 
   # parser.add_argument('-q', dest='matrix_num', default='a',
   #                     type=str, nargs='?',
@@ -500,7 +536,7 @@ def main(args=False):
 
     now = time()
     for problem in src_problems:
-      src_models, _, _ = evolutionary_algorithm(problem, 1000, src_models=src_models, stop_condition=args.stop_condition)
+      src_models, _, _, _ = evolutionary_algorithm(problem, 1000, src_models=src_models, stop_condition=args.stop_condition)
       # src_models, _, _ = evolutionary_algorithm(KP_sc_rk, 1000, src_models=src_models, stop_condition=args.stop_condition)
       # src_models, _, _ = evolutionary_algorithm(KP_wc_rk, 1000, src_models=src_models, stop_condition=args.stop_condition)
       # src_models, _, _ = evolutionary_algorithm(KP_sc_ak, 1000, src_models=src_models, stop_condition=args.stop_condition)
@@ -528,14 +564,25 @@ def main(args=False):
                            s2_psize=1, gen=100, sample_size=args.sample_size,
                            sub_sample_size=args.sub_sample_size, src_models=src_models, 
                            mutation_strength=args.mutation_strength, injection_type=args.injection_type,
-                           to_repititon_num=args.to_repititon_num, selection_version=args.selection_version, c=args.c)
+                           to_repititon_num=args.to_repititon_num, selection_version=args.selection_version,
+                           c=args.c, efficient_version= args.efficient_version)
   elif args.version == 'v3':
     pass
       # return transfer_cc_v2(target_problem, 1000, reps, trans, s1_psize=args.s1_psize,
       #               s2_psize=1, gen=100, sample_size=args.sample_size,
       #               sub_sample_size=args.sub_sample_size, src_models=src_models, 
       #               mutation_strength=args.mutation_strength, injection_type=args.injection_type,
-      #               to_repititon_num=args.to_repititon_num)       
+      #               to_repititon_num=args.to_repititon_num)
+  elif args.version == 'ea_time_scale':
+    gen = 100
+    psize = 100
+    ea_fitness_hist = np.zeros((reps, gen, psize))
+    ea_fitness_time = np.zeros((reps, gen))
+    for i in range(reps):
+      _, _, ea_fitness_hist[i, ...], ea_fitness_time[i, ...] = \
+        evolutionary_algorithm(target_problem, 1000, src_models=src_models, 
+                                  gen=gen, psize=psize, stop_condition=False, create_model=False)
+    return ea_fitness_hist, ea_fitness_time
   elif args.version == 'to':
     return transfer_ea(target_problem, 1000, reps, trans, psize=args.s1_psize, src_models=src_models)
   elif args.version == 'ea':
