@@ -137,6 +137,10 @@ class StrategyChromosome(Individual):
         for i in range(len(removing_samples)):
           if removing_samples[i]!=0:
             r_num = len(prev_samples[i]) + removing_samples[i]
+<<<<<<< HEAD
+=======
+            print(r_num)
+>>>>>>> 1dc5e31e42a64fab5a0a57e0ce69d8ae1b8903db
             if r_num!=0:
               prev_samples[i] = np.random.choice(prev_samples[i], r_num, replace=False)
             else:
