@@ -283,7 +283,10 @@ def transfer_cc_v2(problem, dims, reps, trans,
                    sample_size=50, sub_sample_size=50,
                    mutation_strength=1, injection_type='full', 
                    to_repititon_num=1, selection_version='v1', 
-                   c=2, src_models=[], efficient_version=False):
+                   c=2, src_models=[], efficient_version=False, 
+                   transfer_repeat_num=None):
+
+
   
   if trans['transfer'] and (not src_models):
     raise ValueError('No probabilistic models stored for transfer optimization.')
@@ -292,11 +295,17 @@ def transfer_cc_v2(problem, dims, reps, trans,
 
   init_func_s1 = lambda n: np.round(np.random.rand(n))
   
-  fitness_hist_s1 = np.ndarray([reps, int((gen/delta * (delta-1)) + gen%delta) + 1, s1_psize], dtype=object)
-  fitness_hist_s2 = np.ndarray([reps, int(gen/delta), s2_psize], dtype=object)
-  time_hist_s1 = np.zeros([reps, int((gen/delta * (delta-1)) + gen%delta) + 1, s1_psize], dtype=object)
-  mutation_strength_hist = np.zeros([reps, int(gen/delta), s2_psize])
-  
+  if transfer_repeat_num is None:
+    transfer_repeat_num = float('inf') # repeat in all iterations
+    fitness_hist_s1 = np.ndarray([reps, int((gen/delta * (delta-1)) + gen%delta) + 1, s1_psize], dtype=object)
+    fitness_hist_s2 = np.ndarray([reps, int(gen/delta), s2_psize], dtype=object)
+    time_hist_s1 = np.zeros([reps, int((gen/delta * (delta-1)) + gen%delta) + 1, s1_psize], dtype=object)
+    mutation_strength_hist = np.zeros([reps, int(gen/delta), s2_psize])
+  else:
+    fitness_hist_s1 = np.ndarray([reps, gen-transfer_repeat_num, s1_psize], dtype=object)
+    fitness_hist_s2 = np.ndarray([reps, transfer_repeat_num, s2_psize], dtype=object)
+    time_hist_s1 = np.zeros([reps, gen-transfer_repeat_num, s1_psize], dtype=object)
+    mutation_strength_hist = np.zeros([reps, transfer_repeat_num, s2_psize])
   dims_s2 = len(src_models)+1
 
   best_chrom = None # Best Chromosome to inject to the first species from second species
@@ -313,6 +322,7 @@ def transfer_cc_v2(problem, dims, reps, trans,
 
       second_species_gen_num = 0 # used in selection version 2 for calculating the g
       second_species_gen_success_num = 0 # used in selection version 2 for calculating the g
+      ea_counter = 0
       mutation_strength = ms_value
       bestfitness = np.max(first_species).fitness
       fitness = Chromosome.fitness_to_numpy(first_species)
@@ -325,7 +335,7 @@ def transfer_cc_v2(problem, dims, reps, trans,
       genes_differ = None
       for g in range(1, gen):
         # Initialize a container for the next generation representatives
-        if trans['transfer'] and g % delta == 0:
+        if trans['transfer'] and (g % delta == 0) and (g/delta <= transfer_repeat_num):
           ################# Add Evolution Strategy #####################
             for tg in range(to_repititon_num):
               if g/delta != 1 or tg != 0:
@@ -378,7 +388,7 @@ def transfer_cc_v2(problem, dims, reps, trans,
                   first_species[-1] == np.max(sampled_offsprings)
               elif injection_type == 'full':
                   first_species = total_selection_pop(np.concatenate((first_species, sampled_offsprings)), s1_psize)
-
+              
               fitness_hist_s2[rep, int(g/delta)-1, :] = second_specie
               mutation_strength_hist[rep, int(g/delta)-1, :]  = mutation_strength
               print('Generation %d: Best Fitness of Second Species: %s' % (g, second_specie.fitness))
@@ -399,10 +409,11 @@ def transfer_cc_v2(problem, dims, reps, trans,
                                       np.concatenate((fitness, cfitness)), s1_psize)
 
             bestfitness = fitness[0]
-            fitness_hist_s1[rep, int(np.ceil(g/delta*(delta-1))), :] = first_species
-            time_hist_s1[rep, int(np.ceil(g/delta*(delta-1)))] = time() - start
+            fitness_hist_s1[rep, ea_counter, :] = first_species
+            time_hist_s1[rep, ea_counter] = time() - start
             print('Generation %d best fitness of first species= %f' % (g, bestfitness))
             start = time()
+            ea_counter += 1
   print('Finished')
   return fitness_hist_s1, fitness_hist_s2, mutation_strength_hist, time_hist_s1
 
@@ -477,6 +488,11 @@ def get_args():
   parser.add_argument('--efficient_version', default=False,
                         type=bool, nargs='?',
                         help='Efficient version of evaluation strategy version?')
+
+  parser.add_argument('--transfer_repeat_num', default=None,
+                      type=int, nargs='?',
+                      help='''  Number of times transfer optimization should be run.
+                       if it is None, it will be repeated in every delta iteration''')
 
 
   # parser.add_argument('-q', dest='matrix_num', default='a',
@@ -565,7 +581,7 @@ def main(args=False):
                            sub_sample_size=args.sub_sample_size, src_models=src_models, 
                            mutation_strength=args.mutation_strength, injection_type=args.injection_type,
                            to_repititon_num=args.to_repititon_num, selection_version=args.selection_version,
-                           c=args.c, efficient_version= args.efficient_version)
+                           c=args.c, efficient_version= args.efficient_version, transfer_repeat_num= args.transfer_repeat_num)
   elif args.version == 'v3':
     pass
       # return transfer_cc_v2(target_problem, 1000, reps, trans, s1_psize=args.s1_psize,
