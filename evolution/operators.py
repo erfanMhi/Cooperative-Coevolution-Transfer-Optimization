@@ -1,6 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from evolution.chromosome import Chromosome, AlphaChromosome
+from evolution.chromosome import Chromosome, AlphaChromosome, ChromosomePole
 
 
 def kid_generator(parent, mute_strength, genes_min_bounds=None, genes_max_bounds=None, genes_num=None):
@@ -75,7 +75,7 @@ def selection(pop, stype='roulette', k=1):
     raise ValueError('Type of selection which you entered is wrong')
 
 
-def get_pop_init(n, gn, init_func=np.random.rand):
+def get_pop_init(n, gn, init_func=np.random.rand, p_type='knapsack'):
   """[Initial Population Generator]
   
   Arguments:
@@ -86,7 +86,10 @@ def get_pop_init(n, gn, init_func=np.random.rand):
   Returns:
       [np.ndarray] -- [Array of chromosomes]
   """
-  return np.array([Chromosome(gn, init_func) for _ in range(n)])
+  if p_type == 'knapsack':
+    return np.array([Chromosome(gn, init_func) for _ in range(n)])
+  elif p_type == 'double_pole':
+    return np.array([ChromosomePole(gn, init_func) for _ in range(n)])
 
 def get_pop_init_s2(n, gn, init_func=np.random.rand):
   """[Initial Population Generator]
@@ -143,3 +146,23 @@ def selection_adoption_v2(parent, offspring, mute_strength, gen, success_gen, c=
   else:
     mute_strength = c_sq*mute_strength
   return parent, mute_strength, success_gen, fp < fk
+
+
+def sbx_crossover(p1, p2, muc, dims):
+    child1 = np.zeros(dims)
+    child2 = np.zeros(dims)
+    randlist = np.random.rand(dims)
+    for i in range(dims):
+        if randlist[i] <= 0.5:
+            k = (2*randlist[i])**(1/(muc + 1))
+        else:
+            k = (1/(2*(1 - randlist[i])))**(1/(muc + 1))
+        child1[i] = 0.5*(((1 + k)*p1.genes[i]) + (1 - k)*p2.genes[i])
+        child2[i] = 0.5*(((1 - k)*p1.genes[i]) + (1 + k)*p2.genes[i])
+        if np.random.rand() < 0.5:
+            tmp = child1[i]
+            child1[i] = child2[i]
+            child2[i] = tmp
+    return child1, child2
+
+  

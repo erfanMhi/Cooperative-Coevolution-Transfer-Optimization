@@ -15,6 +15,8 @@ class Chromosome(Individual):
     self.genes[mask] = np.abs(1 - self.genes[mask])
 
 
+
+
   def fitness_calc(self, problem): # You can implement this in a more optmized way using vectorizatioin but it will hurt modularity
     if self.fitness >= 0:
       return self.fitness
@@ -187,3 +189,30 @@ class StrategyChromosome(Individual):
       self.fitness_calc_time = time() - start
       # best_offspring = np.max(offsprings)
       return self.fitness, offsprings
+
+
+class ChromosomePole(Individual):
+  def __init__(self, n, init_func=np.random.rand):
+    super().__init__(n, init_func=init_func)
+
+  def mutation(self, mum, dims):
+    child = self.genes.copy()
+    for i in range(dims):
+        if np.random.rand() < 1/dims:
+            u = np.random.rand()
+            if u <= 0.5:
+                delta = (2*u)**(1/(1 + mum)) - 1
+                child[i] = self.genes[i] + delta*self.genes[i]
+            else:
+                delta = 1 - (2*(1 - u))**(1/(1 + mum))
+                child[i] = self.genes[i] + delta*(1 - self.genes[i])
+    self.genes = child
+    # return child
+
+
+  def fitness_calc(self, net, cart, sLen): # You can implement this in a more optmized way using vectorizatioin but it will hurt modularity
+    if self.fitness >= 0:
+      return self.fitness
+    net.init_weight(self.genes)
+    self.fitness = net.evaluate(cart, sLen)
+    return self.fitness
