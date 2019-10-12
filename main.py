@@ -535,6 +535,15 @@ def main(args=False):
     for problem_num, problem_name in src_problem_set:
       for i in range(problem_num):
         src_problems.append(Tools.load_from_file(os.path.join(knapsack_problem_path, '{}{}'.format(problem_name, i))))
+    KP_uc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_uc_ak'))
+    KP_sc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_sc_ak'))
+    target_problem = KP_uc_ak
+  elif args.src_version == 'v3':
+    if args.buildmodel:
+      src_problem_set = [(50, 'KP_sc_ak'), (316, 'KP_wc_rk'), (317, 'KP_sc_rk'), (317, 'KP_uc_rk')] # Counter-Problem list
+      for problem_num, problem_name in src_problem_set:
+        for i in range(problem_num):
+          src_problems.append(Tools.load_from_file(os.path.join(knapsack_problem_path, '{}{}'.format(problem_name, i))))
 
     KP_uc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_uc_ak'))
     KP_sc_ak = Tools.load_from_file(os.path.join(knapsack_problem_path, 'KP_sc_ak'))
