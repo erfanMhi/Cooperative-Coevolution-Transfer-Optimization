@@ -109,7 +109,6 @@ class StrategyChromosome(Individual):
     self.genes = np.clip(self.genes, genes_min_bounds, genes_max_bounds)
     if np.sum(self.genes) == 0:
       self.genes[-1] = 1
-      print('yes')
     return self.genes/np.sum(self.genes) - tmp_genes/np.sum(tmp_genes) # needed for fitness evaluation step
 
     
@@ -135,7 +134,7 @@ class StrategyChromosome(Individual):
       if is_prev:
         # removing samples
         removing_samples = np.clip(np.ceil(mutation_vec*sample_size).astype(int), None, 0)
-        print('Removing Samples: {}'.format(removing_samples))
+        # print('Removing Samples: {}'.format(removing_samples))
         for i in range(len(removing_samples)):
           if removing_samples[i]!=0:
             r_num = len(prev_samples[i]) + removing_samples[i]
@@ -167,7 +166,7 @@ class StrategyChromosome(Individual):
           for j in range(len(offsprings[i])):
             self.fitness += offsprings[i][j].fitness_calc(problem)
             count += 1
-      print('number of all samples: {}'.format(count))
+      # print('number of all samples: {}'.format(count))
       self.fitness /= count
 
       return self.fitness, flat_offsprings, offsprings

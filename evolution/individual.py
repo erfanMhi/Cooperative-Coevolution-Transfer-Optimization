@@ -10,7 +10,8 @@ class Individual(ABC):
 
   genes_to_numpy = lambda pop: np.array(list(map(lambda c: c.genes, pop)))
   fitness_to_numpy = lambda pop: np.array(list(map(lambda c: c.fitness, pop)))
-
+  genes_to_list = lambda pop: list(map(lambda c: list(c.genes), pop))
+  
   def __init__(self, n, init_func=np.random.rand):
     if isinstance(n, int):
       self.genes = init_func(n)
