@@ -156,7 +156,7 @@ class TransferProcess(mp.Process):
       target_array = np.array(self.shared_array[:])
       self.list_lock.release()
 
-      mixModel.createTable(Chromosome.genes_to_numpy(target_array), True, 'umd')
+      mixModel.createTable(target_array, True, 'umd')
       mixModel.EMstacking()
       mixModel.mutate()
 
@@ -269,7 +269,7 @@ def get_args():
 
   return parser.parse_args()
 
-def main_multi(args):
+def main_multi_transfer(args):
 
   # constants
   models_path = 'models'
@@ -325,5 +325,5 @@ def main_multi(args):
 
 if __name__ == '__main__':
   args = get_args()
-  main_multi(args)
+  main_multi_transfer(args)
   
