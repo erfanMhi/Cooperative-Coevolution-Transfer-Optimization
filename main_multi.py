@@ -1,5 +1,4 @@
 
-import lhsmdu
 import argparse
 import os
 import queue
