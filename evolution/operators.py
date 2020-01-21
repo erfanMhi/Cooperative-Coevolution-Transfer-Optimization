@@ -119,7 +119,7 @@ def selection_adoption(parent, offspring, mute_strength, genes_num=None):
   else:
       ps = 0.
   # adjust global mutation strength
-  mute_strength *= np.exp(1/np.sqrt(genes_num+1) * (ps - p_target)/(1 - p_target))
+  mute_strength *= np.exp(1/np.sqrt(genes_num+1) * (ps - p_target))
 
   return parent, mute_strength, fp < fk
 

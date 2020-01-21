@@ -189,6 +189,46 @@ class StrategyChromosome(Individual):
       # best_offspring = np.max(offsprings)
       return self.fitness, offsprings
 
+  def fitness_calc_pole(self, net, cart, s_len, src_models,
+                    target_model, sample_size, solution_found=None, 
+                    mutation_vec=None, prev_samples=None, efficient_version=False
+                    ):
+
+    start = time()
+    if not efficient_version or (mutation_vec is None):
+      normalized_alpha = self.genes/np.sum(self.genes)
+    else:
+      normalized_alpha = np.clip(mutation_vec, 0, None)
+    mixModel = MixtureModel(src_models, alpha=normalized_alpha)
+    mixModel.add_target_model(target_model)
+  
+    if efficient_version:
+      pass
+    else:
+      offsprings = mixModel.sample(sample_size)
+      # idx = np.random.randint(sample_size, size=sub_sample_size)
+      # offsprings = offsprings[idx] # Creating sub_samples of samples
+      # print('selecting end')
+      offsprings = np.array([ChromosomePole(offspring) for offspring in offsprings])
+
+      func_eval_num = 0
+      sfitness = np.zeros(sample_size)
+      # print('fitness_calc start')
+      for i in range(sample_size): 
+        sfitness[i] = offsprings[i].fitness_calc(net, cart, s_len)
+        if not solution_found.value:
+          func_eval_num += 1
+        if sfitness[i] - 2000 > -0.0001:
+          solution_found.value = True
+      # print('fitness_calc end') 
+      self.fitness = np.mean(sfitness)
+      # print('sample end')
+      # print('selecting start')
+      
+      self.fitness_calc_time = time() - start
+      # best_offspring = np.max(offsprings)
+      return self.fitness, offsprings, func_eval_num
+
 
 class ChromosomePole(Individual):
   def __init__(self, n, init_func=np.random.rand):
